@@ -1,114 +1,100 @@
 /// <reference types="cypress" />
-import { faker } from '@faker-js/faker';
 
-describe('Bank app', () => {
-  const depositAmount = faker.number.int({ min: 500, max: 1000 });
-  const withdrawAmount = faker.number.int({ min: 50, max: 500 });
-  const user = 'Harry Potter';
-  const accountNumber = '1004';
+describe('Hermione Granger Bank Account Flow', () => {
+  const depositAmount = 1000;
+  const withdrawAmount = 500;
+  const accountInfoSelector = '[ng-hide="noAccount"]';
 
   before(() => {
-    cy.visit('/');
+    cy.visit(
+      'https://www.globalsqa.com/angularJs-protractor/' +
+            'BankingProject/#/login'
+    );
+    cy.loginAsHermione();
   });
 
-  it('should provide the ability to work with bank account', () => {
-    // Login
-    cy.contains('.btn', 'Customer Login').click();
-    cy.get('[name="userSelect"]').select(user);
-    cy.contains('.btn', 'Login').click();
+  it(
+    'should allow deposit and withdraw, check balances, and transactions',
+    () => {
+      cy.get('[placeholder="amount"]').clear();
+      cy.get('[placeholder="amount"]').type(String(depositAmount));
+      cy.get('[ng-click="deposit()"]').click();
 
-    const accountInfoSelector = '[ng-hide="noAccount"]';
+      cy.get('[placeholder="amount"]').clear();
+      cy.get('[placeholder="amount"]').type(String(depositAmount));
 
-    // Account number
-    cy.get(accountInfoSelector)
-      .contains('strong', accountNumber)
-      .should('be.visible');
-    cy.get(accountInfoSelector)
-      .contains('strong', accountNumber);
+      cy.get(accountInfoSelector)
+        .contains('strong', depositAmount)
+        .should('be.visible');
 
-    // Initial balance
-    cy.get(accountInfoSelector)
-      .contains('strong', '0')
-      .should('be.visible');
-    cy.get(accountInfoSelector)
-      .contains('strong', '0');
+      cy.get('[ng-show="message"]').should(
+        'contain.text',
+        'Deposit Successful'
+      );
 
-    cy.contains('.ng-binding', 'Dollar').should('be.visible');
+      cy.get('[placeholder="amount"]').clear();
+      cy.get('[placeholder="amount"]').type(String(withdrawAmount));
 
-    // Deposit
-    cy.get('[ng-click="deposit()"]').click();
-    // Deposit
-    cy.get('[ng-click="deposit()"]').click();
-    cy.get('[ng-hide="noAccount"]')
-      .contains('strong', accountNumber)
-      .should('be.visible');
+      // Check balance after deposit
+      cy.get(accountInfoSelector)
+        .contains('strong', depositAmount)
+        .should('be.visible');
 
-    cy.get('[ng-hide="noAccount"]')
-      .contains('strong', accountNumber)
-      .click();
+      // --- Withdraw ---
+      cy.get('[ng-click="withdrawl()"]').click();
+      cy.get('[placeholder="amount"]').clear();
+      cy.get('[placeholder="amount"]').type(String(withdrawAmount));
+      cy.contains('[type="submit"]', 'Withdraw')
+        .should('be.visible')
+        .click();
 
-    cy.contains('[type="submit"]', 'Deposit').click();
+      cy.get('[ng-show="message"]').should(
+        'contain.text',
+        'Transaction successful'
+      );
 
-    cy.get('[type="submit"]').contains('Deposit').click();
+      // Check balance after withdraw
+      cy.get(accountInfoSelector).contains('strong').invoke('text');
+      cy.get('table tbody tr').should('have.length.at.least', 2);
 
-    cy.get('[ng-show="message"]').should(
-      'contain.text',
-      'Deposit Successful'
-    );
+      cy.get(accountInfoSelector)
+        .contains('strong')
+        .invoke('text')
+        .then((text) => {
+          const currentBalance = Number(text);
+          const expectedBalance = depositAmount - withdrawAmount;
+          expect(currentBalance).to.eq(expectedBalance);
+        });
 
-    // Najpierw sprawdzamy widoczność
-    cy.get(accountInfoSelector)
-      .contains('strong', depositAmount)
-      .should('be.visible');
+      cy.get('#userSelect').should('be.visible');
 
-    // Jeśli potrzebujesz kliknąć lub dalej użyć tego elementu
-    cy.get(accountInfoSelector)
-      .contains('strong', depositAmount)
-      .should('be.visible');
-    cy.get(accountInfoSelector)
-      .contains('strong', depositAmount)
-      .click(); // np. kliknięcie lub inna akcja
+      // New account has 0 balance
+      cy.get(accountInfoSelector)
+        .contains('strong', '0')
+        .should('be.visible');
 
-    // Withdraw
-    cy.get('[ng-click="withdrawl()"]').click();
-    // Withdraw
-    cy.get('[ng-click="withdrawl()"]').click();
+      // --- Transactions ---
+      cy.get('[ng-click="transactions()"]').click();
+      cy.get('table tbody tr').should('have.length.at.least', 2);
+      cy.contains('td', depositAmount).should('be.visible');
+      cy.contains('td', withdrawAmount).should('be.visible');
 
-    // Wpisanie kwoty do wypłaty
-    // Wprowadzenie kwoty wypłaty
-    // Wpisanie kwoty wypłaty
-    cy.get('[placeholder="amount"]').clear();
-    cy.get('[placeholder="amount"]').type(withdrawAmount);
+      // --- Back and switch account ---
+      cy.contains('.btn', 'Back').click();
+      cy.get('#userSelect')
+        .should('be.visible')
+        .select('Harry Potter');
+      cy.get('#userSelect')
+        .should('contain', 'Harry Potter');
+      cy.contains('.btn', 'Login').should('be.visible').click();
+      cy.get(accountInfoSelector)
+        .contains('strong', '0')
+        .should('be.visible'); // New account has 0 balance
 
-    // Kliknięcie przycisku "Withdraw"
-    cy.contains('[type="submit"]', 'Withdraw').click();
-
-    // Sprawdzenie komunikatu o sukcesie
-    // Sprawdzenie aktualnego salda po wypłacie
-    const balance = depositAmount - withdrawAmount;
-    cy.get(accountInfoSelector)
-      .contains('strong', balance);
-
-    cy.get(accountInfoSelector)
-      .contains('strong', balance)
-      .should('be.visible');
-    cy.get(accountInfoSelector)
-      .contains('strong', balance)
-      .should('be.visible');
-
-    cy.get('[type="submit"]').contains('Withdraw').click();
-
-    cy.get('[ng-show="message"]').should(
-      'contain.text',
-      'Transaction successful'
-    );
-
-    const finalBalance = depositAmount - withdrawAmount;
-
-    cy.get(accountInfoSelector)
-      .contains('strong', finalBalance)
-      .should('be.visible');
-    cy.get(accountInfoSelector)
-      .contains('strong', finalBalance);
-  });
+      // --- Logout ---
+      cy.contains('.btn', 'Logout').should('be.visible').click();
+      cy.url().should('include', '/login');
+      cy.contains('.btn', 'Customer Login').should('be.visible');
+    }
+  );
 });
